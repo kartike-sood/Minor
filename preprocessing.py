@@ -1,10 +1,12 @@
 import os
 import music21 as m21
+import json
 
 DATASET_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\essen\\europa\\deutschl\\test"
 SAVED_SONGS = "C:\\Users\\Lenovo\\Desktop\\Project\\Saved_songs"
 SINGLE_FILE_DATASET = "C:\\Users\\Lenovo\\Desktop\\Project\\Single_file_dataset"
 SINGLE_SONG_SAVING_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\Single_file_dataset"
+MAPPING_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\mapping.json"
 
 sequence_length = 64 # This is going to be discussed in the next class
 '''
@@ -107,8 +109,11 @@ def encode_song(song, time_step = 0.25):
      
 
     # converting encode_song into a string
-    encoded_song = " ".join(map(str, encoded_song))
-    return encoded_song
+    """We are using map() function here because not all the elements in the 
+    encoded_song[] list are strings, so we first map them to str datatype and 
+    then join all of them together to """
+    encoded_song_str = " ".join(map(str, encoded_song))
+    return encoded_song_str
 
 def load(file_path):
     with open(file_path, "r") as fp:
@@ -129,14 +134,31 @@ def single_file_converter(SAVED_SONGS, SINGLE_SONG_SAVING_PATH, sequence_length)
            song = load(file_path)
            songs = songs + song + " " + new_song_delimiter
 
+    songs = songs[:-1]
+
     # Save this file at another location
 
     with open(os.path.join(SINGLE_SONG_SAVING_PATH, "Single_collection_of_songs"), "w") as fp:
         fp.write(songs)
 
-    # return songs
+    return songs
 
+def create_mappings(composite_song, mapping_path):
+    """We are creating a map because our NN can understand only integers not string datatype, so we are mapping 
+    each character to an integer datatype"""
+    
+    # Remove all the duplicates from the composite song
+    composite_song = composite_song.split()
+    vocabulary = list(set(composite_song))
 
+    # Create a dictionary "vocabulary" with each unique value in the composite song mapped to a unique number
+    mappings = dict()
+    for i, character in enumerate(vocabulary):
+        mappings[character] = i
+
+    # Save mappings to a json file
+    with open(mapping_path, "w") as fp:
+        json.dump(mappings, fp, indent = 4)
 
 
 def pre_processing():
@@ -161,11 +183,11 @@ def pre_processing():
         trans_songs = []
         trans_songs.append(transposed_song)
 
-        # Step 4 -> Encoding the song and saving it into a text file
+        # Step 4 -> Encoding the song
         encoded_song = encode_song(transposed_song)
-        song_name = f"Song {i}.txt"
 
         # Saving the encoded_song string as a text file
+        song_name = f"Song {i}.txt"
         save_path = os.path.join(SAVED_SONGS, song_name)
 
         with open(save_path, "w") as fp:
@@ -173,8 +195,8 @@ def pre_processing():
             fp.write(encoded_song)
 
 
-    single_file_converter(SAVED_SONGS, SINGLE_SONG_SAVING_PATH, sequence_length)
-    # The quick brown fox jumps over a lazy dog. Pack my box with five dozen liquor jugs.
+    composite_song = single_file_converter(SAVED_SONGS, SINGLE_SONG_SAVING_PATH, sequence_length)
+    create_mappings(composite_song, MAPPING_PATH)
     # song = songs[1]
     # song1 = transpose(song)
 
