@@ -1,6 +1,9 @@
 import os
 import music21 as m21
 import json
+import numpy
+from tensorflow.keras.utils import to_categorical
+
 
 DATASET_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\essen\\europa\\deutschl\\test"
 SAVED_SONGS = "C:\\Users\\Lenovo\\Desktop\\Project\\Saved_songs"
@@ -138,7 +141,7 @@ def single_file_converter(SAVED_SONGS, SINGLE_SONG_SAVING_PATH, sequence_length)
 
     # Save this file at another location
 
-    with open(os.path.join(SINGLE_SONG_SAVING_PATH, "Single_collection_of_songs"), "w") as fp:
+    with open(os.path.join(SINGLE_SONG_SAVING_PATH, "Single_collection_of_songs.txt"), "w") as fp:
         fp.write(songs)
 
     return songs
@@ -159,6 +162,57 @@ def create_mappings(composite_song, mapping_path):
     # Save mappings to a json file
     with open(mapping_path, "w") as fp:
         json.dump(mappings, fp, indent = 4)
+
+def convert_songs_to_int(single_song):
+    int_songs = []
+
+    # load the hash values of notes form json file
+    with open(MAPPING_PATH, "r") as fp:
+        mappings = json.load(fp)
+
+    # convert the midi values of notes in single_collection_of_songs into respective hash values
+    single_song = single_song.split()
+
+    for symbol in single_song:
+        int_songs.append(mappings[symbol])
+
+    return int_songs
+
+def generating_training_sequences(sequence_length):
+    # load the songs and mapping them to their hash values
+    path = os.path.join(SINGLE_FILE_DATASET, "Single_collection_of_songs.txt")
+    with open(path, "r") as fp:
+        songs = fp.read()
+
+    int_songs = convert_songs_to_int(songs) # this variable consists of that single song ( which contained all the songs )
+                                            # in their respective hash values
+    
+    # generating the training sequences
+    num_of_sequences = len(int_songs) - sequence_length
+
+    inputs = []
+    targets = []
+
+    for i in range(num_of_sequences):
+        inputs.append(int_songs[i : i + sequence_length]) # Dimension -> [num_of_sequences * sequence_length]
+        targets.append(int_songs[i + sequence_length]) # Dimension -> num_of_sequences
+
+    # One hot encoding
+
+    """
+    This is similar to creating dummy columns in Data Wrangling, like Deleting the "Sex" column
+    and creating "Male" Column and assigning it 0 and 1 values for each row
+    """
+
+    # Now the dimensions of input layer changes to [num_of_sequences * sequence_length * len(mappings)]
+    mappings_size = len(set(int_songs))
+    inputs = to_categorical(inputs, num_classes = mappings_size)
+    targets = numpy.array(targets)
+
+    print(f"There are {len(targets)} inputs")
+
+    return inputs, targets
+
 
 
 def pre_processing():
@@ -197,6 +251,9 @@ def pre_processing():
 
     composite_song = single_file_converter(SAVED_SONGS, SINGLE_SONG_SAVING_PATH, sequence_length)
     create_mappings(composite_song, MAPPING_PATH)
+
+    inputs, targets = generating_training_sequences(sequence_length)
+
     # song = songs[1]
     # song1 = transpose(song)
 
