@@ -5,7 +5,7 @@ import numpy
 from tensorflow.keras.utils import to_categorical
 
 
-DATASET_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\essen\\europa\\deutschl\\test"
+DATASET_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\essen\\europa\\deutschl"
 SAVED_SONGS = "C:\\Users\\Lenovo\\Desktop\\Project\\Saved_songs"
 SINGLE_FILE_DATASET = "C:\\Users\\Lenovo\\Desktop\\Project\\Single_file_dataset"
 SINGLE_SONG_SAVING_PATH = "C:\\Users\\Lenovo\\Desktop\\Project\\Single_file_dataset"
@@ -156,12 +156,18 @@ def create_mappings(composite_song, mapping_path):
 
     # Create a dictionary "vocabulary" with each unique value in the composite song mapped to a unique number
     mappings = dict()
-    for i, character in enumerate(vocabulary):
-        mappings[character] = i
+    for i in range(108):
+        mappings[i + 21] = i
+
+    mappings["/"] = 108
+    mappings["r"] = 109
+    mappings["_"] = 110
 
     # Save mappings to a json file
     with open(mapping_path, "w") as fp:
         json.dump(mappings, fp, indent = 4)
+    
+    
 
 def convert_songs_to_int(single_song):
     int_songs = []
@@ -206,7 +212,7 @@ def generating_training_sequences(sequence_length):
 
     # Now the dimensions of input layer changes to [num_of_sequences * sequence_length * len(mappings)]
     mappings_size = len(set(int_songs))
-    inputs = to_categorical(inputs, num_classes = mappings_size)
+    inputs = to_categorical(inputs, num_classes = 111)
     targets = numpy.array(targets)
 
     print(f"There are {len(targets)} inputs")
