@@ -2,12 +2,12 @@ from preprocessing import generating_training_sequences, sequence_length
 import tensorflow as tf
 
 OUTPUT_UNITS = 111 # Number of items in our mappings dictionary
-NUM_UNITS = [256] # we are passing it as a list because the LSTM layer can have more than 1 hidden layer
+NUM_UNITS = [64] # we are passing it as a list because the LSTM layer can have more than 1 hidden layer
 LOSS = "sparse_categorical_crossentropy" # Loss function
-LEARNING_RATE = 0.001 # Learning rate of the model
+LEARNING_RATE = 0.01 # Learning rate of the model
 
-EPOCHS = 50
-BATCH_SIZE = 100 
+EPOCHS = 10
+BATCH_SIZE = 20 
 
 SAVE_MODEL_PATH = "model.h5"
 
@@ -32,7 +32,7 @@ def build_model(output_units, num_units, loss, learning_rate):
 
     # compile the model
     model.compile(loss = loss, 
-                optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001),
+                optimizer = tf.keras.optimizers.Adam(learning_rate = LEARNING_RATE),
                 metrics = ["accuracy"]
                 )
 

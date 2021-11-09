@@ -1,8 +1,8 @@
 import tensorflow.keras as keras
 import json
+import music21 as m21
 import numpy as np
-from tensorflow.python.keras.backend import one_hot
-from preprocessing import SEQUENCE_LENGTH, MAPPING_PATH
+from preprocessing import sequence_length, MAPPING_PATH
 from train import SAVE_MODEL_PATH
 
 class MelodyGenerator:
@@ -16,10 +16,10 @@ class MelodyGenerator:
         with open(MAPPING_PATH, "r") as fp:
             self._mappings = json.load(fp)
 
-        self._start_symbols = ["/"] * SEQUENCE_LENGTH
+        self._start_symbols = ["/"] * sequence_length
 
 
-    def generate_melody(self, seed, num_steps, max_sequence_length = SEQUENCE_LENGTH, temperature = 0.7):
+    def generate_melody(self, seed, num_steps, max_sequence_length = sequence_length, temperature = 0.7):
 
         seed = seed.split() # converting the seed to a list of notes and rests
 
@@ -73,8 +73,8 @@ class MelodyGenerator:
             seed.append(output_int)
 
             # map the integers back to the midi values
-            key_list = self._mappings.keys()
-            val_list = self._mappings.values()
+            key_list = list(self._mappings.keys())
+            val_list = list(self._mappings.values())
 
             position = val_list.index(output_int)
 
@@ -97,10 +97,100 @@ class MelodyGenerator:
 
         return index
 
+    def save_melody(self, melody, step_duration=0.25, format="midi", file_name="mel.midi"):
+        """Converts a melody into a MIDI file
+        :param melody (list of str):
+        :param min_duration (float): Duration of each time step in quarter length
+        :param file_name (str): Name of midi file
+        :return:
+        """
+
+        # create a music21 stream
+        stream = m21.stream.Stream()
+
+        start_symbol = None
+        step_counter = 1
+
+        # parse all the symbols in the melody and create note/rest objects
+        for i, symbol in enumerate(melody):
+
+            # handle case in which we have a note/rest
+            if symbol != "_" or i + 1 == len(melody):
+
+                # ensure we're dealing with note/rest beyond the first one
+                if start_symbol is not None:
+
+                    quarter_length_duration = step_duration * step_counter # 0.25 * 4 = 1
+
+                    # handle rest
+                    if start_symbol == "r":
+                        m21_event = m21.note.Rest(quarterLength=quarter_length_duration)
+
+                    # handle note
+                    else:
+                        m21_event = m21.note.Note(int(start_symbol), quarterLength=quarter_length_duration)
+
+                    stream.append(m21_event)
+
+                    # reset the step counter
+                    step_counter = 1
+
+                start_symbol = symbol
+
+            # handle case in which we have a prolongation sign "_"
+            else:
+                step_counter += 1
+
+        # write the m21 stream to a midi file
+        stream.write(format, file_name)
+
+
+
+
+
+
+from music21 import converter
+from tensorflow import keras
+from preprocessing import encode_song, transpose, convert_songs_to_int, MAPPING_PATH
+
+
 if __name__ == "__main__":
 
-    mg = MelodyGenerator()
-    seed = "64 _ 69 _ _ _ 71 _ 72 _ _ 71 69 _ 76"
+    song = converter.parse('AnyConv.com__Bollywood Song In Piano.midi')
 
-    melody = mg.generate_melody(seed, num_steps = 500, max_sequence_length = SEQUENCE_LENGTH, temperature = 0.7)
+    # Step 1
+    transposed_song = transpose(song)
+
+    trans_songs = []
+    trans_songs.append(transposed_song)
+
+    # Step 2 -> Encoding the song
+    # encoded_song = encode_song(transposed_song)
+
+    encoded_seed = encode_song(song = transposed_song)
+    # print(encoded_seed, end = "\n\n\n")
+    encoded_seed_int = convert_songs_to_int(encoded_seed)
+    # print(encoded_seed_int)
+
+    with open(MAPPING_PATH, "r") as fp:
+        mappings = json.load(fp)
+
+    keys_list = list(mappings.keys())
+    values_list = list(mappings.values())
+
+    buff = []
+    for val in encoded_seed_int:
+        position = values_list.index(val)
+        buff.append(keys_list[position])
+    
+
+    encoded_seed_int_str = " ".join([str(ele) for ele in buff])
+
+    mg = MelodyGenerator()
+    seed = encoded_seed_int_str
+
+    melody = mg.generate_melody(seed, num_steps = 500, max_sequence_length = sequence_length, temperature = 0.7)
     print(melody)
+
+
+    mg.save_melody(melody)
